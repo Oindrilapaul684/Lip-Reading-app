@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lip Reading - Alphabet & Digit Recognition</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #000000 0%, #919191 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: white;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            animation: fadeInDown 0.8s ease;
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            font-size: 2.8em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .video-section {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        /* The annotated canvas returned from server */
+        #video-feed {
+            width: 100%;
+            border-radius: 10px;
+            background: #000;
+            min-height: 480px;
+            display: block;
+        }
+
+        /* Hidden elements used for capture — not visible */
+        #raw-video   { display: none; }
+        #capture-canvas { display: none; }
+
+        .controls-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            color: #333;
+        }
+
+        .controls-panel h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .mode-selector { margin-bottom: 30px; }
+        .mode-selector h3 { color: #555; margin-bottom: 15px; font-size: 1.2em; }
+
+        .mode-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .mode-btn {
+            padding: 20px;
+            border: 3px solid #ddd;
+            border-radius: 10px;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .mode-btn:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .mode-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+            transform: scale(1.05);
+        }
+
+        .mode-btn .icon { font-size: 2em; display: block; margin-bottom: 10px; }
+
+        .detection-control { margin-bottom: 30px; }
+        .detection-control h3 { color: #555; margin-bottom: 15px; font-size: 1.2em; }
+
+        .toggle-btn {
+            width: 100%;
+            padding: 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .toggle-btn.start { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; }
+        .toggle-btn.stop  { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; }
+        .toggle-btn:hover  { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.3); }
+        .toggle-btn:active { transform: translateY(0); }
+
+        .prediction-display {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 10px;
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .prediction-label { font-size: 1em; opacity: 0.9; margin-bottom: 10px; }
+
+        .predicted-char {
+            font-size: 5em;
+            font-weight: bold;
+            margin: 15px 0;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50%       { transform: scale(1.05); }
+        }
+
+        .confidence-display { font-size: 1.2em; opacity: 0.9; }
+
+        .status-panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .status-panel h3 { color: #555; margin-bottom: 15px; font-size: 1.2em; }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .status-label  { color: #666; font-weight: 500; }
+        .status-value  { display: flex; align-items: center; gap: 8px; font-weight: bold; }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-dot.active {
+            background: #10b981;
+            box-shadow: 0 0 10px #10b981;
+            animation: pulse-dot 2s infinite;
+        }
+
+        .status-dot.inactive { background: #ef4444; }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.5; }
+        }
+
+        .reference-grid { background: #f8f9fa; padding: 20px; border-radius: 10px; }
+        .reference-grid h3 { color: #555; margin-bottom: 15px; font-size: 1.2em; }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
+            gap: 8px;
+        }
+
+        .grid-item {
+            padding: 12px;
+            background: white;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+            color: #666;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .grid-item.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: scale(1.15);
+            box-shadow: 0 5px 15px rgba(102,126,234,0.4);
+        }
+
+        .instructions {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            color: #856404;
+        }
+
+        .instructions h4 { margin-bottom: 10px; color: #856404; }
+        .instructions ul  { padding-left: 20px; }
+        .instructions li  { margin-bottom: 5px; }
+
+        .alert {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ef4444;
+        }
+
+        footer { text-align: center; margin-top: 30px; opacity: 0.9; }
+
+        @media (max-width: 1024px) {
+            .main-content { grid-template-columns: 1fr; }
+            h1 { font-size: 2em; }
+        }
+
+        .loading { text-align: center; padding: 20px; color: #666; }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0%   { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎥 Lip Reading AI</h1>
+            <p class="subtitle">Alphabet & Digit Recognition from Lip Movements</p>
+        </header>
+
+        <div id="alert-container"></div>
+
+        <div class="main-content">
+            <!-- Video Feed Section -->
+            <div class="video-section">
+                <!--
+                    CLOUD-COMPATIBLE VIDEO PIPELINE:
+                    1. #raw-video   — hidden <video> element fed by getUserMedia (browser webcam)
+                    2. #capture-canvas — hidden canvas used to grab frames as JPEG
+                    3. #video-feed  — visible <img> that displays the annotated frame returned by the server
+                    The JS loop captures from #raw-video → sends base64 to /process_frame → paints response onto #video-feed
+                -->
+                <video id="raw-video" autoplay playsinline muted></video>
+                <canvas id="capture-canvas"></canvas>
+                <img id="video-feed" src="" alt="Video Feed">
+            </div>
+
+            <!-- Control Panel Section -->
+            <div class="controls-panel">
+                <h2>🎛️ Control Panel</h2>
+
+                <!-- Mode Selector -->
+                <div class="mode-selector">
+                    <h3>Select Recognition Mode:</h3>
+                    <div class="mode-buttons">
+                        <button class="mode-btn active" id="alphabet-mode" onclick="setMode('alphabet')">
+                            <span class="icon">🔤</span>
+                            ALPHABET<br>(A-Z)
+                        </button>
+                        <button class="mode-btn" id="digit-mode" onclick="setMode('digit')">
+                            <span class="icon">🔢</span>
+                            DIGITS<br>(0-9)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Detection Control -->
+                <div class="detection-control">
+                    <h3>Detection Control:</h3>
+                    <button class="toggle-btn start" id="toggle-btn" onclick="toggleDetection()">
+                        ▶ START DETECTION
+                    </button>
+                </div>
+
+                <!-- Current Prediction -->
+                <div class="prediction-display">
+                    <div class="prediction-label">Current Detection:</div>
+                    <div class="predicted-char" id="predicted-char">-</div>
+                    <div class="confidence-display" id="confidence-display">Waiting...</div>
+                </div>
+
+                <!-- Status Panel -->
+                <div class="status-panel">
+                    <h3>📊 System Status</h3>
+                    <div class="status-item">
+                        <span class="status-label">Camera</span>
+                        <span class="status-value">
+                            <span class="status-dot" id="camera-status"></span>
+                            <span id="camera-text">Checking...</span>
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Alphabet Model</span>
+                        <span class="status-value">
+                            <span class="status-dot" id="alphabet-model-status"></span>
+                            <span id="alphabet-model-text">Checking...</span>
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Digit Model</span>
+                        <span class="status-value">
+                            <span class="status-dot" id="digit-model-status"></span>
+                            <span id="digit-model-text">Checking...</span>
+                        </span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Detection Status</span>
+                        <span class="status-value">
+                            <span class="status-dot" id="detection-status"></span>
+                            <span id="detection-text">Stopped</span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Reference Grid -->
+                <div class="reference-grid">
+                    <h3 id="grid-title">📖 Alphabet Reference</h3>
+                    <div class="grid-container" id="reference-grid"></div>
+                </div>
+
+                <!-- Instructions -->
+                <div class="instructions">
+                    <h4>💡 Instructions:</h4>
+                    <ul>
+                        <li>Allow camera access when prompted</li>
+                        <li>Select mode (Alphabet or Digit)</li>
+                        <li>Click START to begin detection</li>
+                        <li>Position your face clearly</li>
+                        <li>Speak letters/digits slowly</li>
+                        <li>Green dots track lip movements</li>
+                        <li>Results appear in real-time</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Powered by MediaPipe, OpenCV & Machine Learning</p>
+            <p>© 2026 Lip Reading AI | Dual Mode Recognition</p>
+        </footer>
+    </div>
+
+    <!-- Hidden elements for WebRTC capture -->
+    <video id="raw-video"      autoplay playsinline muted style="display:none;"></video>
+    <canvas id="capture-canvas" style="display:none;"></canvas>
+
+    <script>
+        // ─────────────────────────────────────────────
+        // STATE
+        // ─────────────────────────────────────────────
+        let currentMode   = 'alphabet';
+        let isDetecting   = false;
+        let lastPrediction = '-';
+        let cameraReady   = false;
+        let frameLoopRunning = false;
+
+        // ─────────────────────────────────────────────
+        // CAMERA INIT  (browser WebRTC)
+        // ─────────────────────────────────────────────
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 640, height: 480, facingMode: 'user' },
+                    audio: false
+                });
+                const rawVideo = document.getElementById('raw-video');
+                rawVideo.srcObject = stream;
+                await rawVideo.play();
+
+                // Size the hidden capture canvas to match
+                const captureCanvas = document.getElementById('capture-canvas');
+                captureCanvas.width  = 640;
+                captureCanvas.height = 480;
+
+                cameraReady = true;
+                updateStatusIndicator('camera', true);
+                document.getElementById('camera-text').textContent = 'Active';
+
+                // Start the frame-send loop
+                startFrameLoop();
+            } catch (err) {
+                console.error('Camera error:', err);
+                updateStatusIndicator('camera', false);
+                document.getElementById('camera-text').textContent = 'No Access';
+                showAlert('error', '❌ Camera access denied. Please allow camera permissions and refresh.');
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        // FRAME LOOP  — capture → send → display
+        // ─────────────────────────────────────────────
+        async function startFrameLoop() {
+            if (frameLoopRunning) return;
+            frameLoopRunning = true;
+
+            const rawVideo     = document.getElementById('raw-video');
+            const captureCanvas = document.getElementById('capture-canvas');
+            const ctx           = captureCanvas.getContext('2d');
+            const displayImg    = document.getElementById('video-feed');
+
+            async function loop() {
+                if (!cameraReady) { requestAnimationFrame(loop); return; }
+
+                // Draw the current webcam frame onto the hidden canvas
+                ctx.drawImage(rawVideo, 0, 0, captureCanvas.width, captureCanvas.height);
+
+                // Export as JPEG base64 (quality 0.7 keeps payload small)
+                const frameB64 = captureCanvas.toDataURL('image/jpeg', 0.7);
+
+                try {
+                    const res = await fetch('/process_frame', {
+                        method : 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body   : JSON.stringify({ frame: frameB64 })
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+
+                        // Update visible feed with annotated frame from server
+                        if (data.frame) displayImg.src = data.frame;
+
+                        // Sync detection state and prediction from server response
+                        isDetecting = data.is_detecting;
+                        updateDetectionButton();
+
+                        if (data.prediction && data.prediction !== '-' && data.is_detecting) {
+                            if (data.prediction !== lastPrediction) {
+                                document.getElementById('predicted-char').textContent = data.prediction;
+                                document.getElementById('confidence-display').textContent =
+                                    `Confidence: ${(data.confidence * 100).toFixed(1)}%`;
+                                highlightCharacter(data.prediction);
+                                lastPrediction = data.prediction;
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.warn('Frame send error:', err);
+                }
+
+                // ~15 fps — enough for lip reading, keeps server load reasonable
+                setTimeout(() => requestAnimationFrame(loop), 66);
+            }
+
+            requestAnimationFrame(loop);
+        }
+
+        // ─────────────────────────────────────────────
+        // REFERENCE GRID
+        // ─────────────────────────────────────────────
+        function initReferenceGrid() {
+            updateReferenceGrid(currentMode);
+        }
+
+        function updateReferenceGrid(mode) {
+            const grid  = document.getElementById('reference-grid');
+            const title = document.getElementById('grid-title');
+            grid.innerHTML = '';
+
+            if (mode === 'alphabet') {
+                title.textContent = '📖 Alphabet Reference (A-Z)';
+                for (let i = 0; i < 26; i++) {
+                    const letter = String.fromCharCode(65 + i);
+                    const div = document.createElement('div');
+                    div.className = 'grid-item';
+                    div.id = `grid-${letter}`;
+                    div.textContent = letter;
+                    grid.appendChild(div);
+                }
+            } else {
+                title.textContent = '📖 Digit Reference (0-9)';
+                for (let i = 0; i <= 9; i++) {
+                    const div = document.createElement('div');
+                    div.className = 'grid-item';
+                    div.id = `grid-${i}`;
+                    div.textContent = i;
+                    grid.appendChild(div);
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        // MODE  (unchanged — calls /set_mode)
+        // ─────────────────────────────────────────────
+        async function setMode(mode) {
+            try {
+                const response = await fetch('/set_mode', {
+                    method : 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body   : JSON.stringify({ mode })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    currentMode = mode;
+                    document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+                    document.getElementById(`${mode}-mode`).classList.add('active');
+                    updateReferenceGrid(mode);
+                    document.getElementById('predicted-char').textContent = '-';
+                    document.getElementById('confidence-display').textContent = 'Waiting...';
+                    document.querySelectorAll('.grid-item').forEach(item => item.classList.remove('active'));
+                }
+            } catch (error) {
+                console.error('Error setting mode:', error);
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        // DETECTION TOGGLE  (unchanged — calls /toggle_detection)
+        // ─────────────────────────────────────────────
+        async function toggleDetection() {
+            try {
+                const response = await fetch('/toggle_detection', {
+                    method : 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    isDetecting = data.is_detecting;
+                    updateDetectionButton();
+                }
+            } catch (error) {
+                console.error('Error toggling detection:', error);
+            }
+        }
+
+        function updateDetectionButton() {
+            const btn = document.getElementById('toggle-btn');
+            if (isDetecting) {
+                btn.textContent = '⏸ STOP DETECTION';
+                btn.classList.remove('start');
+                btn.classList.add('stop');
+            } else {
+                btn.textContent = '▶ START DETECTION';
+                btn.classList.remove('stop');
+                btn.classList.add('start');
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        // STATUS POLLING  (unchanged — calls /status)
+        // ─────────────────────────────────────────────
+        async function checkStatus() {
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+
+                updateStatusIndicator('alphabet-model', data.alphabet_model_loaded);
+                updateStatusIndicator('digit-model',    data.digit_model_loaded);
+                updateStatusIndicator('detection',      data.is_detecting);
+                document.getElementById('detection-text').textContent =
+                    data.is_detecting ? 'Active' : 'Stopped';
+
+                currentMode = data.current_mode;
+                isDetecting = data.is_detecting;
+
+                if (!data.alphabet_model_loaded && !data.digit_model_loaded) {
+                    showAlert('error',
+                        '⚠️ No models loaded! Please ensure rf_model.pkl and/or random_forest_model.pkl exist.');
+                }
+            } catch (error) {
+                console.error('Error checking status:', error);
+            }
+        }
+
+        function updateStatusIndicator(id, isActive) {
+            const dot  = document.getElementById(`${id}-status`);
+            const text = document.getElementById(`${id}-text`);
+            if (dot) {
+                dot.classList.toggle('active',   isActive);
+                dot.classList.toggle('inactive', !isActive);
+            }
+            if (text) text.textContent = isActive ? 'Active' : 'Inactive';
+        }
+
+        function highlightCharacter(char) {
+            document.querySelectorAll('.grid-item').forEach(item => item.classList.remove('active'));
+            const el = document.getElementById(`grid-${char}`);
+            if (el) el.classList.add('active');
+        }
+
+        function showAlert(type, message) {
+            const container = document.getElementById('alert-container');
+            const cls = type === 'error' ? 'alert' : 'alert info';
+            if (!container.innerHTML.includes(message)) {
+                container.innerHTML = `<div class="${cls}">${message}</div>`;
+            }
+        }
+
+        // ─────────────────────────────────────────────
+        // BOOT
+        // ─────────────────────────────────────────────
+        window.addEventListener('load', () => {
+            initReferenceGrid();
+            initCamera();          // start browser webcam + frame loop
+            checkStatus();
+            setInterval(checkStatus, 2000);
+        });
+    </script>
+</body>
+</html>
